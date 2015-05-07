@@ -14,8 +14,6 @@ airMolMass = 0.02897
 RotationRate = 2000 * 0.104719755
 SecondsPerRadian = 1/(RotationRate)
 Seconds = SecondsPerRadian * Pi/numSteps
-print("Seconds")
-print(Seconds)
 
 CompressedVolume = ((Pi/4.0)*Bore**2*Stroke)/(Compression-1)
 Volume = CompressedVolume
@@ -31,43 +29,73 @@ DistanceTravelled = 0
 
 outFile = open("output.txt", "w")
 
-outFile.write("Theta, Volume, Mass, Pressure, Density\n")
+outFile.write("Theta, Volume, Mass, Pressure, Density, Temperature\n")
 Mass = Volume * Density
-outFile.write(str(Theta) + ", " + str(Volume) + ", " + str(Mass) + ", " + str(Pressure) + ", " + str(Density) + "\n")
+outFile.write(str(Theta) + ", " + str(Volume) + ", " + str(Mass) + ", " + str(Pressure) + ", " + str(Density) + ", " + str(Temperature) +"\n")
 
 for loop in range(0, numSteps):
 
-	#Induction
-	Theta += Pi/numSteps
+	Theta += 4*Pi/numSteps
 	DistanceTravelled = (1+math.sin(Theta-Pi/2.0))/2.0
-
 	Mass = Volume * Density
 
 	OldVolume = Volume
 	Volume = CompressedVolume + DistanceTravelled * Stroke * Pi * (Bore/2.0)**2
-	Pressure = (Volume/OldVolume)**-Gamma * Pressure
-	Density = Mass / Volume
-	Temperature = Pressure * Volume/(Number * R)
 
-	if(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density) > 0):
-		FlowVelocity = math.sqrt(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density))
+	if Theta < Pi:
+		#Induction
+		Pressure = (Volume/OldVolume)**-Gamma * Pressure
+		Density = Mass / Volume
+		Temperature = Pressure * Volume/(Number * R)
+
+		if(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density) > 0):
+			FlowVelocity = math.sqrt(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density))
+		else:
+			FlowVelocity = 0
+
+		MassRate = FlowVelocity * PortArea * Density
+		dNum = MassRate / airMolMass
+
+		Temperature = ((MassRate * Seconds)*300+Mass*Temperature)/((MassRate * Seconds) + Mass)
+
+		Mass = Mass + MassRate * Seconds
+
+		Number = Number + dNum * Seconds
+
+		Density = Mass / Volume
+
+		Pressure = Number*R*Temperature/Volume
+
+	elif Theta < 2*Pi:
+		#Compression
+		Pressure = (Volume/OldVolume)**-Gamma * Pressure
+		Temperature = Pressure * Volume/(Number * R)
+		Density = Mass / Volume
+
+	elif Theta < 3*Pi:
+		#Combustion/Expansion
+		Pressure = (Volume/OldVolume)**-Gamma * Pressure
+		Temperature = Pressure * Volume/(Number * R)
+		Density = Mass / Volume
+
 	else:
-		FlowVelocity = 0
+		#Exhaust
+		Pressure = (Volume/OldVolume)**-Gamma * Pressure
 
-	MassRate = FlowVelocity * PortArea * Density
-	dNum = MassRate / airMolMass
+		Density = Mass / Volume
+		Temperature = Pressure * Volume/(Number * R)
 
-	Mass = Mass + MassRate * Seconds
-	Number = Number + dNum * Seconds
+		if(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density) > 0):
+			FlowVelocity = -math.sqrt(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density))
+		else:
+			FlowVelocity = 0
 
-	Density = Mass / Volume
+		MassRate = FlowVelocity * PortArea * Density
+		dNum = MassRate / airMolMass
 
-	Pressure = Number*R*Temperature/Volume
+		Mass = Mass + MassRate * Seconds
+		Number = Number + dNum * Seconds
 
-	#Compression
+		Density = Mass / Volume
 
-	#Combustion/Expansion
-
-	#Exhaust
-
-	outFile.write(str(Theta) + ", " + str(Volume) + ", " + str(Mass) + ", " + str(Pressure) + ", " + str(Density) + "\n")
+	outFile.write(str(Theta) + ", " + str(Volume) + ", " + str(Mass) + ", " + str(Pressure) + ", " + str(Density) + ", " + str(Temperature) + "\n")
