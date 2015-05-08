@@ -13,8 +13,11 @@ TBD
 #Physical description
 ##Induction
 This stage is modelled on a combination of adiabatic expansion and a 1D compressible Navier-Stokes solver. The model iterates over time with the piston moving out a small amount, creating a pressure imbalance over the intake port (adiabatic expansion), which then causes a flow in from the manifold (solved via NS). Viscous effects are ignored, and an ideal gas EoS is used.
+
 1D inviscid, compressible NS:
+
 dv/dt + v.dv/dx = dP/dx . 1/rho
+
 Calculate dP/dt via ideal gas equation based on movement of gas (i.e. calculate net change of n in a cell, then recalculate P = nRt/V)
 
 ##Compression
