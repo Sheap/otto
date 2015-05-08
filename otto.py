@@ -10,6 +10,7 @@ Compression = 6.7
 Gamma = 7.0/5.0
 Alpha = Gamma/(Gamma-1)
 airMolMass = 0.02897
+portLength = 0.01
 
 RotationRate = 2000 * 0.104719755
 SecondsPerRadian = 1/(RotationRate)
@@ -48,23 +49,7 @@ for loop in range(0, numSteps):
 		Density = Mass / Volume
 		Temperature = Pressure * Volume/(Number * R)
 
-		if(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density) > 0):
-			FlowVelocity = math.sqrt(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density))
-		else:
-			FlowVelocity = 0
-
-		MassRate = FlowVelocity * PortArea * Density
-		dNum = MassRate / airMolMass
-
-		Temperature = ((MassRate * Seconds)*300+Mass*Temperature)/((MassRate * Seconds) + Mass)
-
-		Mass = Mass + MassRate * Seconds
-
-		Number = Number + dNum * Seconds
-
-		Density = Mass / Volume
-
-		Pressure = Number*R*Temperature/Volume
+		#Put NS solver here
 
 	elif Theta < 2*Pi:
 		#Compression
@@ -81,21 +66,9 @@ for loop in range(0, numSteps):
 	else:
 		#Exhaust
 		Pressure = (Volume/OldVolume)**-Gamma * Pressure
-
 		Density = Mass / Volume
 		Temperature = Pressure * Volume/(Number * R)
 
-		if(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density) > 0):
-			FlowVelocity = -math.sqrt(2*Alpha*(AtmosphericPressure/AtmosphericDensity-Pressure/Density))
-		else:
-			FlowVelocity = 0
-
-		MassRate = FlowVelocity * PortArea * Density
-		dNum = MassRate / airMolMass
-
-		Mass = Mass + MassRate * Seconds
-		Number = Number + dNum * Seconds
-
-		Density = Mass / Volume
+		#Put NS solver here
 
 	outFile.write(str(Theta) + ", " + str(Volume) + ", " + str(Mass) + ", " + str(Pressure) + ", " + str(Density) + ", " + str(Temperature) + "\n")
