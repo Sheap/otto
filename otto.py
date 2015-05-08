@@ -1,8 +1,12 @@
+import sys
 import math
 
 Pi = 3.141592653
 R = 8.3144621
 numSteps = 10000
+nsElements = 10
+nsSteps = 10
+nsLength = 1
 Bore = 0.14
 Stroke = 0.14
 PortArea = Pi*0.01**2
@@ -14,7 +18,7 @@ portLength = 0.01
 
 RotationRate = 2000 * 0.104719755
 SecondsPerRadian = 1/(RotationRate)
-Seconds = SecondsPerRadian * Pi/numSteps
+Seconds = SecondsPerRadian * Pi/(numSteps*nsSteps)
 
 CompressedVolume = ((Pi/4.0)*Bore**2*Stroke)/(Compression-1)
 Volume = CompressedVolume
@@ -29,10 +33,28 @@ Theta = 0
 DistanceTravelled = 0
 
 outFile = open("output.txt", "w")
+nsFile = open("ns.txt", "w")
 
 outFile.write("Theta, Volume, Mass, Pressure, Density, Temperature\n")
 Mass = Volume * Density
 outFile.write(str(Theta) + ", " + str(Volume) + ", " + str(Mass) + ", " + str(Pressure) + ", " + str(Density) + ", " + str(Temperature) +"\n")
+
+#Set up ICs
+Position = []
+VelocityField = []
+PressureField = []
+DensityField = []
+numberField = []
+numberFlow = []
+MeshVolume = (PortArea * nsElements/nsLength)
+
+for meshPoint in range(0, nsElements):
+	Position.append(meshPoint/nsLength)
+	VelocityField.append(0)
+	PressureField.append(AtmosphericPressure)
+	DensityField.append(AtmosphericDensity)
+	numberField.append(PressureField[meshPoint]*MeshVolume/(R*Temperature))
+	numberFlow.append(0)
 
 for loop in range(0, numSteps):
 
@@ -49,7 +71,36 @@ for loop in range(0, numSteps):
 		Density = Mass / Volume
 		Temperature = Pressure * Volume/(Number * R)
 
-		#Put NS solver here
+		#Solve NS
+
+		#set inner boundary conditions
+		PressureField[0] = Pressure
+		DensityField[0] = Density
+
+		for meshPoint in range(0, nsElements):
+			nsFile.write(str(VelocityField[meshPoint]) + " ")
+		nsFile.write("\n")
+
+		for nsStep in range(0, nsSteps):
+			#calculate velocity field
+			for meshPoint in range(0, nsElements - 1):
+				dvdx = (VelocityField[meshPoint + 1] - VelocityField[meshPoint])/(Position[meshPoint+1] - Position[meshPoint])
+				dPdx = (PressureField[meshPoint + 1] - PressureField[meshPoint])/(Position[meshPoint+1] - Position[meshPoint])
+				VelocityField[meshPoint] += dPdx/DensityField[meshPoint] - VelocityField[meshPoint]*dvdx
+				numberFlow[meshPoint] = VelocityField[meshPoint] * DensityField[meshPoint]/(PortArea * airMolMass) * Seconds
+
+			#calculate pressure field
+			for meshPoint in range(1, nsElements - 1):
+				numberField[meshPoint] = numberField[meshPoint] + numberFlow[meshPoint] - numberFlow[meshPoint + 1]
+				PressureField[meshPoint] = numberField[meshPoint] * R * Temperature/MeshVolume
+				
+			for meshPoint in range(0, nsElements):
+				nsFile.write(str(VelocityField[meshPoint]) + " ")
+
+			nsFile.write("\n")
+		sys.exit()
+
+
 
 	elif Theta < 2*Pi:
 		#Compression
