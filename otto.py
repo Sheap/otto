@@ -5,20 +5,20 @@ Pi = 3.141592653
 R = 8.3144621
 numSteps = 10000
 nsElements = 100
-nsSteps = 100
-nsLength = 0.01
+nsSteps = 10000
+nsLength = 1.0
 Bore = 0.14
 Stroke = 0.14
-PortArea = Pi*(Bore/2)**2
+PortArea = Pi*(Bore/4)**2
 Compression = 6.7
 Gamma = 7.0/5.0
 Alpha = Gamma/(Gamma-1)
 airMolMass = 0.02897
 portLength = 0.01
 
-RotationRate = 2000 * 0.104719755
+RotationRate = 1000 * 0.104719755
 SecondsPerRadian = 1/(RotationRate)
-Seconds = SecondsPerRadian * Pi/(numSteps*nsSteps)
+Seconds = SecondsPerRadian * 4*Pi/(numSteps*nsSteps)
 
 CompressedVolume = ((Pi/4.0)*Bore**2*Stroke)/(Compression-1)
 Volume = CompressedVolume
@@ -29,11 +29,20 @@ Density = AtmosphericDensity
 Temperature = 300
 Number = (Pressure*Volume)/(R*Temperature)
 
+nsCoeff = -Seconds/(2*AtmosphericDensity*nsLength/nsElements)
+
+#print("dt, rho, dx")
+#print(Seconds)
+#print(AtmosphericDensity)
+#print(nsLength/nsElements)
+
+#print("coeff:")
+#print(nsCoeff)
+
 Theta = 0
 DistanceTravelled = 0
 
 outFile = open("output.txt", "w")
-nsFile = open("ns.txt", "w")
 
 outFile.write("Theta, Volume, Mass, Pressure, Density, Temperature, Number\n")
 Mass = Volume * Density
@@ -44,7 +53,7 @@ VelocityField = []
 PressureField = [] #difference from atmospheric pressure
 numberFlow = []
 numberField = []
-MeshVolume = (PortArea * nsElements/nsLength)
+MeshVolume = (PortArea * nsLength/nsElements)
 StepLength = nsLength/float(nsElements)
 
 for meshPoint in range(0, nsElements):
@@ -73,13 +82,19 @@ for loop in range(0, numSteps):
 		#set inner boundary conditions
 		PressureField[0] = Pressure - AtmosphericPressure
 
-		for meshPoint in range(0, nsElements):
-			nsFile.write(str(VelocityField[meshPoint]) + " ")
-		nsFile.write("\n")
-
 		for nsStep in range(0, nsSteps):
 			VelocityField[0] = VelocityField[1]
 			VelocityField[nsElements-1] = 0
+
+			velFile = open("vel.txt", "w")
+			presFile = open("pressure.txt", "w")
+
+			for meshPoint in range(0, nsElements):
+				presFile.write(str(PressureField[meshPoint]) + " ")
+				velFile.write(str(VelocityField[meshPoint]) + " ")
+			presFile.write("\n")
+			velFile.write("\n")
+
 			#calculate velocity field
 			#print("Pressure")
 			#for meshPoint in range(0, nsElements):
@@ -91,23 +106,51 @@ for loop in range(0, numSteps):
 				#print(`meshPoint` + ", " + `VelocityField[meshPoint]`)
 			#print("")
 
-			dx = nsLength/nsElements
-
 			#print("New Velocity")
-			for i in range(1, nsElements-1):
-				dv = VelocityField[i+1]-VelocityField[i-1]
-				dP = PressureField[i+1]-PressureField[i-1]
+			for i in range(0, nsElements-1):
+				if(i == 0):
+					dv = 0
+					dP = PressureField[i+1]-(Pressure-AtmosphericPressure)
+				else:
+					dv = VelocityField[i+1]-VelocityField[i-1]
+					dP = PressureField[i+1]-PressureField[i-1] 
+					stop = False
+					if(math.isnan(dP)):
+						stop = True
+						print("P, -1, +1")
+						print(PressureField[i-1])
+						print(PressureField[i+1])
+
+					if(math.isnan(dv)):
+						stop = True
+						print("v, -1, +1")
+						print(VelocityField[i-1])
+						print(VelocityField[i+1])
+					if(stop):
+						sys.exit()
+
+
 				vin = VelocityField[i]
 				#print("dv, dP, vin")
 				#print(`dv` + ", " + `dP` + ", " + `vin`)
-				VelocityField[i] = -(Seconds/(2*Density*dx))*(vin*dv + dP) + vin
+				VelocityField[i] = nsCoeff*(vin*dv + dP) + vin
 				#print(`i` + ", " + `VelocityField[i]`)
+
+				if(math.isnan(VelocityField[i])):
+					print("vel nan")
+					print(vin)
+					print(dv)
+					print(dP)
+					sys.exit()
 
 			VelocityField[0] = VelocityField[1]
 
-			for meshPoint in range(0, nsElements):
-				numberFlow[meshPoint] = VelocityField[meshPoint] * Density * PortArea * Seconds / airMolMass * Seconds
-				##print("flow: " + str(numberFlow[meshPoint]))
+			for meshPoint in range(0, nsElements-1):
+				if(meshPoint == 0):
+					numberFlow[meshPoint] = VelocityField[meshPoint] * Density * PortArea * Seconds / airMolMass
+				else:
+					numberFlow[meshPoint] = 0.5 * (VelocityField[meshPoint-1] + VelocityField[meshPoint]) * Density * PortArea * Seconds / airMolMass
+				#print("flow: " + str(numberFlow[meshPoint]))
 
 			#calculate pressure field
 			for meshPoint in range(0, nsElements-1):
@@ -119,12 +162,19 @@ for loop in range(0, numSteps):
 					PressureField[meshPoint] += dndt * R * Temperature/MeshVolume
 				
 			for meshPoint in range(0, nsElements):
-				nsFile.write(str(VelocityField[meshPoint]) + " ")
+				presFile.write(str(PressureField[meshPoint]) + " ")
+				velFile.write(str(VelocityField[meshPoint]) + " ")
 
-			nsFile.write("\n")
+			presFile.write("\n")
+			velFile.write("\n")
 
+		presFile.close()
+		velFile.close()
 
 		Number -= numberFlow[0]
+		if(math.isnan(Number)):
+			print("nan")
+			sys.exit()
 		Pressure = Number*R*Temperature/Volume
 
 
