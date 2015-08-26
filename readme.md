@@ -19,6 +19,8 @@ This stage is modelled on a combination of adiabatic expansion and a 1D compress
 d(rho)/dt + d(rho.u)/dx = 0
 d(rho.u)/dt + d(rho.u^2+p)/dx = 0
 
+These equations are (will be) solved via a Riemann solver to give density and velocity fields for the next timestep
+
 Calculate dP/dt via ideal gas equation based on movement of gas (i.e. calculate net change of n in a cell, then recalculate P = nRt/V)
 
 ##Compression
